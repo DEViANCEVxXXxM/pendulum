@@ -2,6 +2,10 @@
 
 A standalone, interactive double-pendulum experiment built with **Three.js** and the **DEVIANCE / ATELIER** UI design system. The scene is a cinematic visualization of a numerical mechanics model, not a pre-rendered animation. The project has no links to other DEVIANCE scenes and is ready to publish from the root of an independent GitHub Pages repository.
 
+## Try it
+
+Open on [GitHub Pages](https://deviancevxxxxm.github.io/pendulum/)
+
 ## Explore the experiment
 
 Four intentionally different viewpoints:
