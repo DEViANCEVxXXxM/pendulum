@@ -1,0 +1,10 @@
+{
+  "name": "chaos-double-pendulum-observatory",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "test:physics": "node tests/physics-test.mjs"
+  }
+}

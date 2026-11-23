@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#060910"><meta name="description" content="CHAOS — an interactive physical double-pendulum observatory with energy telemetry, divergence and phase portraits.">
+<title>CHAOS — Double Pendulum Observatory</title>
+<style>
+:root{
+ --bg-dark:#060910;--panel-bg:rgba(9,14,26,.84);
+ --panel-border:rgba(125,174,255,.20);--panel-hover:rgba(127,174,255,.25);
+ --text-main:#eef4ff;--text-muted:#95a7bd;
+ --accent-aurora:#f5b96e;--accent-aurora-glow:rgba(245,185,110,.30);
+ --font-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+ --font-sans:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
+}
+*{box-sizing:border-box}html,body{height:100%;width:100%;margin:0;overflow:hidden;background:var(--bg-dark);color:var(--text-main);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+#canvas-container{position:fixed;inset:0;z-index:1}#canvas-container canvas{display:block;width:100%;height:100%;touch-action:none}
+.scene-vignette{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse 68% 80% at 45% 47%,transparent 15%,rgba(2,5,13,.38) 85%,rgba(2,5,13,.7) 100%)}
+.top-bar{position:fixed;top:18px;left:18px;right:18px;display:flex;align-items:center;justify-content:space-between;z-index:30;pointer-events:none;gap:16px}
+.top-bar>*{pointer-events:auto}
+.brand-group{display:flex;align-items:center;gap:12px;background:var(--panel-bg);border:1px solid var(--panel-border);padding:9px 14px;border-radius:14px;backdrop-filter:blur(16px)}
+.brand-title{font-size:13px;font-weight:740;letter-spacing:.02em;color:white;white-space:nowrap}
+.badge-status{display:inline-flex;align-items:center;gap:6px;border-radius:9px;padding:7px 9px;color:var(--accent-aurora);border:1px solid var(--panel-border);font:700 10px var(--font-mono);white-space:nowrap}
+.badge-status:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent-aurora);box-shadow:0 0 12px var(--accent-aurora)}
+.action-group{display:flex;align-items:center;gap:5px}
+.glass-btn{background:var(--panel-bg);border:1px solid var(--panel-border);color:var(--text-main);padding:9px 12px;font-size:11px;cursor:pointer;border-radius:10px;transition:background .18s,color .18s}
+.glass-btn:hover{background:rgba(255,255,255,.10)}.glass-btn.active{color:var(--accent-aurora);background:rgba(245,185,110,.17)}
+.hud-overlay{position:fixed;left:19px;top:85px;z-index:9;width:281px;padding:18px 17px;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:17px;backdrop-filter:blur(20px);box-shadow:0 16px 38px rgba(0,0,0,.3);pointer-events:none}
+.hud-title{font:750 9px var(--font-mono);letter-spacing:.14em;color:var(--text-muted);text-transform:uppercase;margin-bottom:15px}
+.kp-meter-box{margin-bottom:16px}.kp-header{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:9px}.kp-header span+span{font:700 11px var(--font-mono);color:var(--accent-aurora)}.kp-bar{height:4px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}.kp-fill{height:100%;width:68%;background:linear-gradient(90deg,#8279e7,#57d2ff,#fff5aa,#ff6974);transition:width .3s}
+.hud-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font:11px/1.5 var(--font-mono);margin-top:10px;color:#91a0b6}.hud-row span:first-child{max-width:157px}.hud-val{color:#e7eefb;text-align:right;font-weight:650;white-space:nowrap}
+.camera-dock{position:fixed;left:50%;bottom:17px;transform:translateX(-50%);z-index:20;display:flex;gap:4px;padding:5px;border:1px solid var(--panel-border);background:rgba(8,14,25,.94);border-radius:15px;box-shadow:0 16px 40px rgba(0,0,0,.45);backdrop-filter:blur(16px)}
+.dock-btn{border:0;border-radius:10px;padding:10px 13px;cursor:pointer;font:650 11px var(--font-sans);color:#9ca9be;background:transparent;white-space:nowrap}.dock-btn:hover{background:rgba(255,255,255,.07);color:#fff}.dock-btn.active{background:rgba(245,185,110,.17);color:#ffd8a2}
+.inspector{position:fixed;right:18px;top:85px;bottom:86px;width:336px;z-index:25;display:flex;flex-direction:column;overflow:hidden;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:17px;box-shadow:0 22px 46px rgba(0,0,0,.36);backdrop-filter:blur(22px);transition:transform .27s,opacity .25s}
+.inspector.collapsed{transform:translateX(calc(100% + 38px));opacity:0;pointer-events:none}.tab-header{display:flex;gap:6px;padding:12px;border-bottom:1px solid rgba(255,255,255,.08)}.tab-btn{flex:1;padding:10px 5px;background:none;color:#8d9cb5;border:0;border-radius:9px;font:650 11px var(--font-sans);cursor:pointer}.tab-btn:hover{background:rgba(255,255,255,.06)}.tab-btn.active{background:rgba(245,185,110,.17);color:#a8c5ff}
+.tab-content{overflow-y:auto;scrollbar-width:thin;flex:1;padding:18px 17px 30px;display:none}.tab-content.active{display:block}.ctrl-group{margin-bottom:20px}.ctrl-label{display:flex;justify-content:space-between;align-items:baseline;gap:9px;color:#a9b6c9;font-size:11px;margin-bottom:9px}.ctrl-label span.val{color:var(--accent-aurora);font:650 11px var(--font-mono)}input[type=range]{width:100%;height:4px;appearance:none;border-radius:10px;background:rgba(255,255,255,.15);outline:none;cursor:pointer}input[type=range]::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent-aurora);box-shadow:0 0 14px rgba(245,185,110,.45)}.inspector select{width:100%;height:38px;background:#121c2c;color:#e6f2ff;border:1px solid var(--panel-border);border-radius:9px;padding:0 10px;font-size:11px;cursor:pointer}
+.section-divider{height:1px;background:rgba(255,255,255,.09);margin:18px 0}.section-label{font:700 9px var(--font-mono);letter-spacing:.14em;color:#72849d;text-transform:uppercase;margin:18px 0 12px}.check-row{display:flex;align-items:center;justify-content:space-between;gap:13px;font-size:11px;color:#acbed0;margin:0 0 15px;cursor:pointer}.check-row input{appearance:none;flex:0 0 33px;width:33px;height:19px;border:1px solid rgba(255,255,255,.17);background:rgba(255,255,255,.12);border-radius:20px;position:relative;cursor:pointer}.check-row input:after{content:"";position:absolute;width:13px;height:13px;top:2px;left:2px;border-radius:50%;background:#7f8d9d;transition:transform .17s,background .17s}.check-row input:checked{border-color:rgba(245,185,110,.5);background:rgba(245,185,110,.29)}.check-row input:checked:after{transform:translateX(14px);background:#9dc0ff}.subnote{color:#8697ae;font-size:10px;line-height:1.72;margin:12px 0 8px}.stat-card{background:rgba(255,255,255,.033);border:1px solid rgba(255,255,255,.065);border-radius:11px;padding:12px 13px;margin-bottom:10px}.stat-title{font:690 9px var(--font-mono);text-transform:uppercase;letter-spacing:.09em;color:#8796ae;margin-bottom:8px}.stat-val{color:#f0f7ff;font:700 18px var(--font-mono)}
+.scene-caption{position:fixed;left:calc(19px);top:342px;z-index:6;width:270px;pointer-events:none}.scene-caption .kicker{color:#8da3c8;font:700 9px var(--font-mono);letter-spacing:.21em}.scene-caption h1{font:750 24px/1.1 var(--font-sans);letter-spacing:-.035em;color:#f0f7ff;margin:9px 0}.scene-caption p{max-width:265px;color:#8798b3;font-size:11px;line-height:1.65;margin:0}.scene-meta{margin-top:14px;color:#7396bd;font:700 9px var(--font-mono);letter-spacing:.1em}
+.scene-corner{position:fixed;right:376px;bottom:89px;color:#71839c;text-align:right;font:9px/1.8 var(--font-mono);letter-spacing:.1em;pointer-events:none;z-index:5}.shortcut-hints{position:fixed;bottom:20px;left:18px;font:10px var(--font-mono);color:#9ca8bf;background:var(--panel-bg);border-radius:9px;padding:8px 10px;z-index:11;pointer-events:none}.shortcut-hints kbd{font-weight:700;color:#e0e8ff}
+.ui-hidden .top-bar,.ui-hidden .hud-overlay,.ui-hidden .camera-dock,.ui-hidden .inspector,.ui-hidden .scene-caption,.ui-hidden .scene-corner{opacity:0!important;pointer-events:none!important}
+@media(max-width:1220px){.scene-caption{display:none}.scene-corner{display:none}.hud-overlay{width:230px}.inspector{width:305px}}
+@media(max-width:880px){.top-bar{top:10px;left:11px;right:11px;flex-direction:column;align-items:stretch}.brand-group{width:100%}.action-group{align-self:flex-end}.hud-overlay{top:115px;left:11px}.inspector{top:115px;right:11px;bottom:74px}.camera-dock{bottom:11px}.scene-caption{display:none}}
+@media(max-width:650px){.hud-overlay{width:212px;padding:12px}.camera-dock{max-width:calc(100vw - 20px)}.dock-btn{padding:7px 8px;font-size:10px}}
+/* PRISM / Optical controls: a compact measured-vs-showcase tool. */
+.physics-mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;border-radius:12px;background:rgba(3,7,16,.48);border:1px solid rgba(245,185,110,.13)}
+.mode-chip{min-width:0;min-height:36px;border:1px solid transparent;border-radius:9px;cursor:pointer;font:700 10px var(--font-sans);color:#91a6c5;background:transparent;transition:.18s ease;white-space:nowrap}
+.mode-chip:hover{color:#e6efff;background:rgba(255,255,255,.055)}
+.mode-chip.active{color:#c8dcff;border-color:rgba(245,185,110,.38);background:rgba(245,185,110,.17);box-shadow:inset 0 1px rgba(255,255,255,.06)}
+.physics-mode-caption{font:700 9px var(--font-mono);letter-spacing:.10em;color:#f5b96e;margin:10px 1px 22px}
+.live-explanation{padding:11px 12px;border-left:2px solid #f5b96e;background:rgba(245,185,110,.06);border-radius:0 10px 10px 0;color:#bdcce0;font:500 11px/1.65 var(--font-sans);margin:12px 0 20px}
+.help-asterisk{color:#d1ab7e;cursor:help}
+.view-index{display:inline-block;margin-left:12px;padding-left:12px;color:#f5b96e;border-left:1px solid rgba(140,170,230,.23)}
+.tiny-live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin:0 5px 1px 0;background:#f5b96e;box-shadow:0 0 9px rgba(245,185,110,.58)}
+@media(max-width:880px){.scene-caption{display:none!important}}
+
+/* CHAOS-specific informative and tactile controls */
+.mode-chip.active{color:#ffe1b2;border-color:rgba(245,185,110,.48);background:rgba(245,185,110,.14)}
+.live-explanation{border-left-color:#f5b96e;background:rgba(245,185,110,.063)}
+.physics-mode-caption{color:#f5b96e}
+.scene-meta,.view-index{color:#d5ac7b}
+.chaos-action{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;border-radius:10px;border:1px solid rgba(245,185,110,.3);background:linear-gradient(125deg,rgba(245,185,110,.14),rgba(245,185,110,.045));color:#ffe7c8;font-size:11px;font-weight:700;cursor:pointer;transition:.2s ease}
+.chaos-action:hover{background:rgba(245,185,110,.22)}
+.chaos-action:focus-visible{outline:2px solid #f5b96e}
+.mini-tip{font:10px/1.65 var(--font-mono);color:#9aaac2}
+.twin-key{display:flex;gap:14px;margin:12px 0;color:#a2b2c8;font:650 10px var(--font-mono)}
+.twin-key span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#f5b96e;box-shadow:0 0 9px #f5b96e;margin-right:7px}
+.twin-key span:nth-child(2)::before{background:#73d8ff;box-shadow:0 0 9px #73d8ff}
+.diagnostic{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px}
+.diagnostic .stat-card{margin:0}.diagnostic .stat-val{font-size:14px}
+@media(max-width:650px){.scene-caption{display:none}.twin-key{gap:7px}}
+</style>
+<link rel="stylesheet" href="assets/atelier-ui.css">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body data-project-id="chaos-observatory" data-project-name="CHAOS · Double Pendulum" data-accent="#f5b96e">
+<div id="canvas-container"></div><div class="scene-vignette"></div>
+<div class="top-bar"><div class="brand-group"><div class="brand-title">CHAOS · Double Pendulum</div><div class="badge-status" id="statusBadge">IDEAL · RUNNING</div></div>
+<div class="action-group">
+<button class="glass-btn" id="btnReset" title="Reset motion [R]">↻ Reset</button>
+<button class="glass-btn" id="btnPause" title="Pause motion [Space]">⏸ Pause</button>
+<button class="glass-btn active" id="btnGuides" title="Toggle geometry guides [G]">⊕ Guides</button>
+<button class="glass-btn" id="btnCapture" title="Capture image [P]">▣ Capture</button>
+<button class="glass-btn" id="btnDrawer" title="Toggle inspector [H]">⚙ Inspector</button>
+<button class="glass-btn" id="btnFullscreen" title="Fullscreen [F]">⛶ Fullscreen</button>
+</div></div>
+<div class="hud-overlay">
+<div class="hud-title">Coupled dynamics / live telemetry</div>
+<div class="kp-meter-box"><div class="kp-header"><span>Trajectory separation</span><span id="hudSeparation">0.7 cm</span></div><div class="kp-bar"><div class="kp-fill" id="separationFill" style="width:1%"></div></div></div>
+<div class="hud-row"><span>Arm angles θ₁ / θ₂</span><span class="hud-val" id="hudAngles">124° / −28°</span></div>
+<div class="hud-row"><span>Mechanical energy</span><span class="hud-val" id="hudEnergy">— J</span></div>
+<div class="hud-row"><span>Energy drift vs release</span><span class="hud-val" id="hudDrift">0.000%</span></div>
+<div class="hud-row"><span>Elapsed simulation</span><span class="hud-val" id="hudElapsed">0.0 s</span></div>
+<div class="hud-row"><span>Model</span><span class="hud-val" id="hudModel">RK4 / 240 Hz</span></div>
+<div class="twin-key"><span>REFERENCE</span><span>PERTURBED</span></div>
+</div>
+<div class="scene-caption"><div class="kicker">DEVIANCE / EXPERIMENT 009 <span id="sceneViewIndex" class="view-index">01 / 04</span></div>
+<h1 id="sceneViewTitle">Order, becoming chaos.</h1>
+<p id="sceneViewDescription">Two pendulums begin almost alike. Watch a tiny difference grow into a wildly different future.</p>
+<div class="scene-meta"><span class="tiny-live-dot"></span> COUPLED NONLINEAR MOTION · LIVE</div></div>
+<div class="scene-corner">DRAG TO ORBIT · SCROLL TO ZOOM<br>FIXED-STEP RK4 · ENERGY MONITORING</div>
+<div class="camera-dock" id="cameraDock" role="group" aria-label="Observatory viewpoints">
+<button class="dock-btn active" data-preset="0">Observatory</button>
+<button class="dock-btn" data-preset="1">Side Study</button>
+<button class="dock-btn" data-preset="2">Light Trails</button>
+<button class="dock-btn" data-preset="3">Phase Space</button>
+</div>
+<div class="inspector" id="inspectorDrawer">
+<div class="tab-header"><button class="tab-btn active" data-tab="tab-dynamics">Dynamics</button><button class="tab-btn" data-tab="tab-trails">Appearance</button><button class="tab-btn" data-tab="tab-analysis">Analysis</button></div>
+<div class="tab-content active" id="tab-dynamics">
+<div class="section-label">Initial conditions</div>
+<div class="physics-mode-toggle" role="group" aria-label="Trajectory comparison">
+<button class="mode-chip" id="btnSingle" aria-pressed="false">Single pendulum</button>
+<button class="mode-chip active" id="btnTwin" aria-pressed="true">Twin comparison</button>
+</div>
+<div class="physics-mode-caption" id="comparisonMode">TWO ALMOST IDENTICAL SYSTEMS</div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Upper-arm release θ₁</span><span class="val" id="vTheta1">124°</span></div><input type="range" id="sTheta1" min="-175" max="175" step="1" value="124"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Lower-arm release θ₂</span><span class="val" id="vTheta2">−28°</span></div><input type="range" id="sTheta2" min="-175" max="175" step="1" value="-28"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Initial difference Δθ₁</span><span class="val" id="vDelta">0.20°</span></div><input type="range" id="sDelta" min="0.01" max="2" step="0.01" value="0.20"></div>
+<button class="chaos-action" id="btnRelease">↻ Release from these angles <span>↗</span></button>
+<div class="subnote">Changing a physical parameter or release angle restarts both trajectories together. In twin mode, only the secondary upper-arm angle differs.</div>
+<div class="section-divider"></div><div class="section-label">Physics</div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Upper mass m₁</span><span class="val" id="vM1">1.20 kg</span></div><input type="range" id="sM1" min="0.3" max="3" step="0.05" value="1.2"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Lower mass m₂</span><span class="val" id="vM2">1.00 kg</span></div><input type="range" id="sM2" min="0.3" max="3" step="0.05" value="1"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Upper rod length L₁</span><span class="val" id="vL1">2.10 m</span></div><input type="range" id="sL1" min="1" max="2.8" step="0.05" value="2.1"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Lower rod length L₂</span><span class="val" id="vL2">1.90 m</span></div><input type="range" id="sL2" min="1" max="2.8" step="0.05" value="1.9"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Gravity</span><span class="val" id="vGravity">9.81 m/s²</span></div><input type="range" id="sGravity" min="1" max="19.6" step="0.01" value="9.81"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Angular damping</span><span class="val" id="vDamping">0.000 s⁻¹</span></div><input type="range" id="sDamping" min="0" max="0.12" step="0.002" value="0"></div>
+</div>
+<div class="tab-content" id="tab-trails">
+<div class="section-label">Motion playback</div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Simulation speed</span><span class="val" id="vSpeed">1.00×</span></div><input type="range" id="sSpeed" min="0.1" max="2" step="0.05" value="1"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Trail duration</span><span class="val" id="vTrailSeconds">13 s</span></div><input type="range" id="sTrailSeconds" min="2" max="22" step="1" value="13"></div>
+<div class="ctrl-group"><div class="ctrl-label"><span>Trail luminosity</span><span class="val" id="vTrailLight">1.00×</span></div><input type="range" id="sTrailLight" min="0.2" max="2.5" step="0.05" value="1"></div>
+<div class="section-divider"></div><div class="section-label">Display layers</div>
+<label class="check-row"><span>Show recent trajectories</span><input type="checkbox" id="tTrails" checked></label>
+<label class="check-row"><span>Show pendulum guides</span><input type="checkbox" id="tGuides" checked></label>
+<label class="check-row"><span>Show phase-portrait instrument</span><input type="checkbox" id="tPhase" checked></label>
+<label class="check-row"><span>Show floor calibration grid</span><input type="checkbox" id="tGrid" checked></label>
+<div class="subnote">Light trails, halo effects and the phase instrument are display layers. They do not apply additional forces to the physical model.</div>
+</div>
+<div class="tab-content" id="tab-analysis">
+<div class="diagnostic"><div class="stat-card"><div class="stat-title">Frame rate</div><div class="stat-val" id="statFps">— FPS</div></div><div class="stat-card"><div class="stat-title">Solver</div><div class="stat-val">RK4 · 240 Hz</div></div></div>
+<div class="stat-card"><div class="stat-title">Trajectory difference · bob 2</div><div class="stat-val" id="statDivergence">— m</div></div>
+<div class="stat-card"><div class="stat-title">Mechanical energy · reference</div><div class="stat-val" id="statEnergy">— J</div></div>
+<div class="stat-card"><div class="stat-title">Change since release</div><div class="stat-val" id="statDrift">—</div></div>
+<div class="stat-card"><div class="stat-title">Kinetic / potential</div><div class="stat-val" id="statKV">— / — J</div></div>
+<div class="stat-card"><div class="stat-title">Current view</div><div class="stat-val" id="statView">Observatory</div></div>
+<div class="section-divider"></div><div class="section-label">About this model</div>
+<div class="subnote">Two point masses on massless rigid rods in a vertical plane under uniform gravity. Numerical integration uses fixed 1/240-second RK4 steps. The comparison starts with Δθ₁ only; it demonstrates sensitive dependence on initial conditions, not quantum uncertainty.</div>
+<div class="subnote">With damping set to zero, total energy should remain approximately constant up to numerical error. With damping, energy decreases physically, so the readout shows total energy change, not solely solver drift. The phase portrait plots θ₁ against angular velocity ω₁, with wrapped angles at ±180°.</div>
+</div>
+</div>
+<div class="shortcut-hints"><kbd>Space</kbd> Pause | <kbd>1–4</kbd> Views | <kbd>C</kbd> Compare | <kbd>G</kbd> Guides | <kbd>R</kbd> Restart | <kbd>H</kbd> Inspector | <kbd>P</kbd> Capture | <kbd>F</kbd> Fullscreen</div>
+<script type="module" src="assets/chaos-scene.js"></script><script src="assets/atelier-ui.js"></script>
+</body></html>
